@@ -1,0 +1,411 @@
+load("@llvm-project//mlir:tblgen.bzl", "gentbl_cc_library", "gentbl_filegroup", "td_library")
+load("@com_github_bazelbuild_buildtools//buildifier:def.bzl", "buildifier")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+# Format bazel BUILD and .bzl files with a standard convention
+# Invoke as `bazel run @torch-mlir//:buildifier`
+buildifier(
+    name = "buildifier",
+)
+
+td_library(
+    name = "TritonOpsIncGenTdFiles",
+    srcs = glob(
+       [
+        "include/triton/Dialect/Triton/IR/*.td",
+        "include/triton/Dialect/Triton/Transforms/*.td",
+       ],
+    ),
+    includes = ["include"],
+    deps = [
+        "@llvm-project//mlir:OpBaseTdFiles",
+    ]
+)
+
+gentbl_cc_library(
+    name = "TritonOpsIncGen",
+    strip_include_prefix = "include",
+    tbl_outs = [
+        (
+            ["-gen-op-decls"],
+            "include/triton/Dialect/Triton/IR/Ops.h.inc"
+        ),
+        (
+            ["-gen-op-defs"],
+            "include/triton/Dialect/Triton/IR/Ops.cpp.inc"
+        ),
+        (
+            ["-gen-enum-decls"],
+            "include/triton/Dialect/Triton/IR/OpsEnums.h.inc"
+        ),
+        (
+            ["-gen-enum-defs"],
+            "include/triton/Dialect/Triton/IR/OpsEnums.cpp.inc"
+        ),
+    ],
+    tblgen = "@llvm-project//mlir:mlir-tblgen",
+    td_file = "include/triton/Dialect/Triton/IR/TritonOps.td",
+    deps = [
+        ":TritonOpsIncGenTdFiles",
+    ]
+)
+
+gentbl_cc_library(
+    name = "TritonDialectIncGen",
+    strip_include_prefix = "include",
+    tbl_outs = [
+        (
+            ["-gen-dialect-decls"],
+            "include/triton/Dialect/Triton/IR/Dialect.h.inc"
+        ),
+        (
+            ["-gen-dialect-defs"],
+            "include/triton/Dialect/Triton/IR/Dialect.cpp.inc"
+        ),
+    ],
+    tblgen = "@llvm-project//mlir:mlir-tblgen",
+    td_file = "include/triton/Dialect/Triton/IR/TritonDialect.td",
+    deps = [
+        ":TritonOpsIncGenTdFiles",
+    ],
+)
+
+gentbl_cc_library(
+    name = "TritonTypeIncGen",
+    strip_include_prefix = "include",
+    tbl_outs = [
+        (
+            ["-gen-typedef-decls"],
+            "include/triton/Dialect/Triton/IR/Types.h.inc"
+        ),
+        (
+            ["-gen-typedef-defs"],
+            "include/triton/Dialect/Triton/IR/Types.cpp.inc"
+        ),
+    ],
+    tblgen = "@llvm-project//mlir:mlir-tblgen",
+    td_file = "include/triton/Dialect/Triton/IR/TritonTypes.td",
+    deps = [
+        ":TritonOpsIncGenTdFiles",
+    ],
+)
+
+gentbl_cc_library(
+    name = "TritonInterfacesIncGen",
+    strip_include_prefix = "include",
+    tbl_outs = [
+        (
+            ["-gen-attr-interface-decls"],
+            "include/triton/Dialect/Triton/IR/AttrInterfaces.h.inc"
+        ),
+        (
+            ["-gen-attr-interface-defs"],
+            "include/triton/Dialect/Triton/IR/AttrInterfaces.cpp.inc"
+        ),
+    ],
+    tblgen = "@llvm-project//mlir:mlir-tblgen",
+    td_file = "include/triton/Dialect/Triton/IR/TritonInterfaces.td",
+    deps = [
+        ":TritonOpsIncGenTdFiles",
+    ],
+)
+
+gentbl_cc_library(
+    name = "TritonDialectPass",
+    strip_include_prefix = "include",
+    tbl_outs = [
+        (
+            ["-gen-pass-decls", "--name", "Triton"],
+            "include/triton/Dialect/Triton/Transforms/Passes.h.inc",
+        )
+    ],
+    tblgen = "@llvm-project//mlir:mlir-tblgen",
+    td_file = "include/triton/Dialect/Triton/Transforms/Passes.td",
+    deps = [
+        ":TritonOpsIncGenTdFiles",
+    ]
+)
+
+cc_library(
+    name = "TritonDialect",
+    srcs = glob(
+        [
+            "lib/Dialect/Triton/IR/Interfaces.cpp",
+            "lib/Dialect/Triton/IR/Dialect.cpp",
+            "lib/Dialect/Triton/IR/Ops.cpp",
+            "lib/Dialect/Triton/IR/Types.cpp",
+            "lib/Dialect/Triton/IR/Traits.cpp",
+            "lib/Dialect/Triton/Transforms/Passes.cpp",
+            "lib/Dialect/Triton/Transforms/Combine.cpp",
+        ]
+    ),
+    hdrs = glob([
+        "include/triton/Dialect/Triton/IR/*.h",
+        "include/triton/Dialect/Triton/IR/*.inc",
+        "include/triton/Dialect/Triton/Transforms/*.inc",
+        "include/triton/Dialect/Triton/Transforms/*.h",
+        "lib/Dialect/Triton/Transforms/TritonCombine.inc",
+    ]),
+    includes = [
+        "include",
+        "lib/Dialect/Triton/Transforms",
+    ],
+    deps = [
+        ":TritonDialectPass",
+        ":TritonCombineIncGen",
+        ":TritonDialectIncGen",
+        ":TritonOpsIncGen",
+        ":TritonTypeIncGen",
+        ":TritonInterfacesIncGen",
+        "@llvm-project//mlir:Support",
+        "@llvm-project//mlir:MathTransforms",
+        "@llvm-project//mlir:InferTypeOpInterface",
+        "@llvm-project//mlir:FuncDialect",
+    ],
+)
+
+# Triton GPU Dialect/Passes
+td_library(
+    name = "TritonGPUOpsIncGenTdFiles",
+    srcs = glob(
+       ["include/triton/Dialect/TritonGPU/IR/*.td"] 
+    ),
+    includes = ["include"],
+    deps = [
+        "@llvm-project//mlir:OpBaseTdFiles",
+    ]
+)
+
+gentbl_cc_library(
+    name = "TritonGPUOpsIncGen",
+    strip_include_prefix = "include",
+    tbl_outs = [
+        (
+            ["-gen-op-decls"],
+            "include/triton/Dialect/TritonGPU/IR/Ops.h.inc"
+        ),
+        (
+            ["-gen-op-defs"],
+            "include/triton/Dialect/TritonGPU/IR/Ops.cpp.inc"
+        ),
+        (
+            ["-gen-dialect-decls", "-dialect=triton_gpu"],
+            "include/triton/Dialect/TritonGPU/IR/Dialect.h.inc"
+        ),
+        (
+            ["-gen-dialect-defs", "-dialect=triton_gpu"],
+            "include/triton/Dialect/TritonGPU/IR/Dialect.cpp.inc"
+        ),
+    ],
+    tblgen = "@llvm-project//mlir:mlir-tblgen",
+    td_file = "include/triton/Dialect/TritonGPU/IR/TritonGPUOps.td",
+    deps = [
+        ":TritonGPUOpsIncGenTdFiles",
+    ]
+)
+
+
+gentbl_cc_library(
+    name = "TritonGPUAttrDefsIncGen",
+    strip_include_prefix = "include",
+    tbl_outs = [
+        (
+            ["-gen-attrdef-decls"],
+            "include/triton/Dialect/TritonGPU/IR/TritonGPUAttrDefs.h.inc"
+        ),
+        (
+            ["-gen-attrdef-defs"],
+            "include/triton/Dialect/TritonGPU/IR/TritonGPUAttrDefs.cpp.inc"
+        ),
+    ],
+    tblgen = "@llvm-project//mlir:mlir-tblgen",
+    td_file = "include/triton/Dialect/TritonGPU/IR/TritonGPUAttrDefs.td",
+    deps = [
+        ":TritonGPUOpsIncGenTdFiles",
+    ],
+)
+
+gentbl_cc_library(
+    name = "TritonGPUPassesIncGen",
+    strip_include_prefix = "include",
+    tbl_outs = [
+        (
+            ["-gen-pass-decls"],
+            "include/triton/Dialect/TritonGPU/Transforms/Passes.h.inc"
+        ),
+    ],
+    tblgen = "@llvm-project//mlir:mlir-tblgen",
+    td_file = "include/triton/Dialect/TritonGPU/Transforms/Passes.td",
+    deps = [
+        ":TritonPassesTdFiles"
+    ]
+)
+
+cc_library(
+    name = "TritonAnalysis",
+    strip_include_prefix = "include",
+    srcs = glob([
+        "lib/Analysis/Utility.cpp"
+    ]),
+    hdrs = [
+        "include/triton/Analysis/Utility.h",
+    ],
+    deps = [
+        ":TritonGPUIR",
+        ":TritonDialectCombine",
+        "@llvm-project//mlir:IR",
+    ]
+)
+cc_library(
+    name = "TritonGPUIR",
+    strip_include_prefix = "include",
+    srcs = [
+        "lib/Dialect/TritonGPU/IR/Traits.cpp",
+        "lib/Dialect/TritonGPU/IR/Dialect.cpp",
+        "lib/Analysis/Utility.cpp",
+    ],
+    hdrs = [
+        "include/triton/Dialect/TritonGPU/IR/Traits.h",
+        "include/triton/Dialect/TritonGPU/IR/Dialect.h",
+        "include/triton/Analysis/Utility.h",
+    ],
+    deps = [
+        ":TritonGPUOpsIncGen",
+        ":TritonGPUPassesIncGen",
+        ":TritonGPUAttrDefsIncGen",
+        ":TritonDialect",
+        "@llvm-project//mlir:Support",
+        "@llvm-project//mlir:MathTransforms",
+        "@llvm-project//mlir:InferTypeOpInterface",
+        "@llvm-project//mlir:FuncDialect",
+        "@llvm-project//mlir:AllPassesAndDialects"
+    ]
+)
+
+cc_library(
+    name = "TritonGPUPasses",
+    srcs = glob( 
+        [
+            "lib/Dialect/TritonGPU/Transforms/Passes.cpp",
+        ]
+    ),
+    hdrs = glob([
+        "include/triton/Dialect/TritonGPU/Transforms/Passes.h",
+        "include/triton/Dialect/TritonGPU/Transforms/Passes.h.inc",
+    ]),
+    deps = [
+        ":TritonGPUPassesIncGen"
+    ]
+)
+
+# Triton Dialect/Passes
+td_library(
+    name = "TritonPassesTdFiles",
+    srcs = [
+        "include/triton/Dialect/Triton/Transforms/Passes.td",
+        "include/triton/Conversion/Passes.td",
+    ],
+    includes = ["include"],
+    deps = [
+        "@llvm-project//mlir:OpBaseTdFiles",
+    ],
+)
+
+gentbl_cc_library(
+    name = "TritonConversionPassesIncGen",
+    strip_include_prefix = "include",
+    tbl_outs = [
+        (
+            ["-gen-pass-decls"],
+            "include/triton/Conversion/Passes.h.inc"
+        ),
+    ],
+    tblgen = "@llvm-project//mlir:mlir-tblgen",
+    td_file = "include/triton/Conversion/Passes.td",
+    deps = [
+        ":TritonPassesTdFiles"
+    ]
+)
+gentbl_cc_library(
+    name = "TritonCombineIncGen",
+    strip_include_prefix = "lib",
+    tbl_outs = [
+        (
+            ["-gen-rewriters"],
+            "lib/Dialect/Triton/Transforms/TritonCombine.inc",
+        )
+    ],
+    tblgen = "@llvm-project//mlir:mlir-tblgen",
+    td_file = "lib/Dialect/Triton/Transforms/Combine.td",
+    deps = [
+        ":TritonPassesTdFiles",
+    ]
+)
+
+cc_library(
+    name = "TritonConversionPasses",
+    srcs = [
+        "lib/Conversion/TritonToTritonGPU/TritonToTritonGPUPass.cpp",
+        "lib/Dialect/TritonGPU/Transforms/TritonGPUConversion.cpp",
+    ],
+    includes = ["include"],
+    hdrs = [
+        "include/triton/Dialect/TritonGPU/Transforms/TritonGPUConversion.h",
+        "include/triton/Conversion/TritonToTritonGPU/TritonToTritonGPUPass.h",
+        "include/triton/Conversion/Passes.h",
+        "include/triton/Conversion/Passes.h.inc",
+    ],
+    deps = [
+        ":TritonConversionPassesIncGen",
+        ":TritonDialect",
+        ":TritonGPUIR",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:Dialect",
+        "@llvm-project//mlir:Support",
+        "@llvm-project//mlir:LLVMIRTransforms",
+        "@llvm-project//mlir:GPUTransforms",
+        "@llvm-project//mlir:MathDialect",
+    ]
+)
+
+cc_library(
+    name = "TritonDialectCombine",
+    srcs = [
+        "lib/Dialect/Triton/Transforms/Combine.cpp",
+    ],
+    hdrs = [
+        "lib/Dialect/Triton/Transforms/TritonCombine.inc",
+    ],
+    includes = ["lib/Dialect/Triton/Transforms"],
+    deps = [
+        ":TritonDialectPass",
+        ":TritonConversionPasses",
+        ":TritonDialect",
+        ":TritonCombineIncGen",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:Dialect",
+    ]
+)
+
+cc_library(
+    name = "TritonDialectsAndPasses",
+    deps = [
+        ":TritonDialectCombine",
+        ":TritonGPUPasses",
+        ":TritonGPUIR",
+        ":TritonAnalysis",
+        "@llvm-project//mlir:IR",
+    ]
+)
+
+cc_library(
+    name = "TritonTools",
+    srcs = [
+        "include/triton/Tools/Sys/GetEnv.hpp",
+    ]
+)
