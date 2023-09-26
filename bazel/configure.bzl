@@ -45,21 +45,6 @@ def _overlay_directories(repository_ctx):
             stdout = exec_result.stdout,
             stderr = exec_result.stderr,
         ))
-    patch_file = str(repository_ctx.path(repository_ctx.attr.patch).realpath)
-    print(patch_file)
-    if patch_file:
-        cmd = ["bash", "-c", "patch -p0 < " + patch_file]
-        exec_result = repository_ctx.execute(cmd, timeout = 20)
-        if exec_result.return_code != 0:
-            fail(("Failed to execute patch script: '{cmd}'\n" +
-                  "Exited with code {return_code}\n" +
-                  "stdout:\n{stdout}\n" +
-                  "stderr:\n{stderr}\n").format(
-                cmd = " ".join([str(arg) for arg in cmd]),
-                return_code = exec_result.return_code,
-                stdout = exec_result.stdout,
-                stderr = exec_result.stderr,
-            ))
 
 def _triton_configure_impl(repository_ctx):
     _overlay_directories(repository_ctx)
@@ -68,7 +53,4 @@ triton_configure = repository_rule(
     implementation = _triton_configure_impl,
     local = True,
     configure = True,
-    attrs={
-        "patch" : attr.label(mandatory=True)
-    },
 )
