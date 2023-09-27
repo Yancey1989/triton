@@ -1,20 +1,4 @@
-#new_local_repository(
-#    name = "llvm-raw",
-#    build_file_content = "# empty",
-#    path = "../../../pytorch_blade/third_party/torch-mlir/externals/llvm-project"
-#)
-
 load("@llvm-raw//utils/bazel:configure.bzl", "llvm_configure", "llvm_disable_optional_support_deps")
-
-#llvm_configure(
-#    name = "llvm-project",
-#    repo_mapping = {
-#        "@python_runtime": "@local_config_python",
-#    },
-#    targets = [
-#        "X86",
-#    ],
-#)
 
 new_local_repository(
     name = "triton-raw",
